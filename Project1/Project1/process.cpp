@@ -40,6 +40,20 @@ void enqueue(Process* process) {
     }
 }
 
+Process* dequeue() {
+    lock_guard<mutex> lock(mtx);
+    if (!fg_list.empty()) {
+        Process* process = fg_list.front();
+        fg_list.pop_front();
+        return process;
+    }
+    else if (!bg_list.empty()) {
+        Process* process = bg_list.front();
+        bg_list.pop_front();
+        return process;
+    }
+    return nullptr;
+}
 
 void test_enqueue() {
     Process* p1 = create_process(FG);
@@ -60,8 +74,25 @@ void test_enqueue() {
     cout << endl;
 }
 
+void test_dequeue() {
+    Process* p1 = create_process(FG);
+    Process* p2 = create_process(BG);
+    enqueue(p1);
+    enqueue(p2);
+
+    Process* dq1 = dequeue();
+    cout << "Dequeued Process 1: ID=" << dq1->pid << ", Type=" << (dq1->type == FG ? "FG" : "BG") << endl;
+
+    Process* dq2 = dequeue();
+    cout << "Dequeued Process 2: ID=" << dq2->pid << ", Type=" << (dq2->type == FG ? "FG" : "BG") << endl;
+
+    delete p1;
+    delete p2;
+}
+
 int main() {
-    test_enqueue();
+   /* test_enqueue();*/
+    test_dequeue();
     return 0;
 }
 
