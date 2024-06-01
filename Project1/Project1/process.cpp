@@ -125,6 +125,21 @@ void promote() {
     }
 }
 
+
+void split_and_merge() {
+    lock_guard<mutex> lock(mtx);
+    if (bg_list.size() > threshold) {  // Background 리스트의 크기가 임계값을 초과하면
+        vector<Process*> upper_half(bg_list.begin(), bg_list.begin() + bg_list.size() / 2);  // 앞쪽 절반을 잘라내어
+        bg_list.erase(bg_list.begin(), bg_list.begin() + bg_list.size() / 2);  // 리스트에서 제거합니다.
+        fg_list.insert(fg_list.end(), upper_half.begin(), upper_half.end());  // Foreground 리스트의 끝에 추가합니다.
+
+        if (fg_list.size() > threshold) {
+            split_and_merge();  // Foreground 리스트도 임계값을 초과하면 재귀적으로 호출합니다.
+        }
+    }
+}
+
+
 void test_enqueue() {
     Process* p1 = create_process(FG);
     Process* p2 = create_process(BG);
@@ -187,10 +202,33 @@ void test_promote() {
     print_queue_status();
 }
 
+
+void test_split_and_merge() {
+    for (int i = 0; i < 15; ++i) {
+        Process* p = create_process(BG);
+        enqueue(p);
+    }
+
+    split_and_merge();
+
+    cout << "Foreground Queue after split_and_merge: ";
+    for (auto& process : fg_list) {
+        cout << process->pid << " ";
+    }
+    cout << endl;
+
+    cout << "Background Queue after split_and_merge: ";
+    for (auto& process : bg_list) {
+        cout << process->pid << " ";
+    }
+    cout << endl;
+}
+
 int main() {
    /* test_enqueue();*/
    /* test_dequeue();*/
-    test_promote();
+   /* test_promote();*/
+      test_split_and_merge();
 
     return 0;
 }
