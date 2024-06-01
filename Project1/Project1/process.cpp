@@ -30,6 +30,28 @@ Process* create_process(ProcessType type) {
     return new Process{ current_pid++, type };
 }
 
+void print_queue_status() {
+    lock_guard<mutex> lock(mtx);
+    cout << "Foreground Queue: ";
+    for (auto& process : fg_list) {
+        cout << process->pid << (process->type == FG ? "F " : "B ");
+    }
+    cout << endl;
+
+    cout << "Background Queue: ";
+    for (auto& process : bg_list) {
+        cout << process->pid << (process->type == FG ? "F " : "B ");
+    }
+    cout << endl;
+
+    cout << "Wait Queue: ";
+    for (auto& entry : wait_queue) {
+        cout << entry.first->pid << (entry.first->type == FG ? "F:" : "B:") << entry.second << " ";
+    }
+    cout << endl;
+}
+
+
 void enqueue(Process* process) {
     lock_guard<mutex> lock(mtx);  // 다른 스레드와의 동시 접근을 방지하기 위해 mutex를 사용하여 락을 겁니다.
     if (process->type == FG) {
@@ -42,17 +64,65 @@ void enqueue(Process* process) {
 
 Process* dequeue() {
     lock_guard<mutex> lock(mtx);
+    Process* process = nullptr;
+
     if (!fg_list.empty()) {
-        Process* process = fg_list.front();
+        // Foreground 리스트가 비어있지 않으면 첫 번째 프로세스를 가져옴
+        process = fg_list.front();
         fg_list.pop_front();
-        return process;
+
+        // 리스트가 비어있으면 해당 리스트 노드를 제거
+        if (fg_list.empty()) {
+            fg_list.clear();
+        }
     }
     else if (!bg_list.empty()) {
-        Process* process = bg_list.front();
+        // Foreground 리스트가 비어있고 Background 리스트가 비어있지 않으면 첫 번째 프로세스를 가져옴
+        process = bg_list.front();
         bg_list.pop_front();
-        return process;
+
+        // 리스트가 비어있으면 해당 리스트 노드를 제거
+        if (bg_list.empty()) {
+            bg_list.clear();
+        }
     }
-    return nullptr;
+
+    return process;
+}
+
+
+void promote() {
+    lock_guard<mutex> lock(mtx);
+    static auto promote_pointer = bg_list.begin();
+
+    if (!bg_list.empty()) {
+        // 현재 promote 포인터가 가리키는 프로세스를 가져옵니다.
+        Process* process = *promote_pointer;
+
+        // promote 포인터를 지우고 다음 위치로 이동합니다.
+        promote_pointer = bg_list.erase(promote_pointer);
+        if (promote_pointer == bg_list.end()) promote_pointer = bg_list.begin();
+
+        // Foreground 리스트의 끝에 프로세스를 추가합니다.
+        fg_list.push_back(process);
+
+        // Background 리스트가 비어 있으면 promote 포인터를 초기화합니다.
+        if (bg_list.empty() && promote_pointer != bg_list.end()) {
+            promote_pointer = bg_list.erase(promote_pointer);
+        }
+    }
+
+    // 새로운 스택 노드를 생성하는 조건을 추가합니다.
+    if (fg_list.size() == 1 && fg_list.front()->type == FG) {
+        Process* new_node = create_process(FG);
+        fg_list.push_front(new_node);
+    }
+
+    // Clock-wise 순서로 다음 노드를 가리킵니다.
+    promote_pointer++;
+    if (promote_pointer == bg_list.end()) {
+        promote_pointer = bg_list.begin();
+    }
 }
 
 void test_enqueue() {
@@ -75,24 +145,53 @@ void test_enqueue() {
 }
 
 void test_dequeue() {
+    // 초기 상태 설정
     Process* p1 = create_process(FG);
     Process* p2 = create_process(BG);
     enqueue(p1);
     enqueue(p2);
 
+    cout << "Initial state:" << endl;
+    print_queue_status();
+
+    // 첫 번째 dequeue 호출
     Process* dq1 = dequeue();
     cout << "Dequeued Process 1: ID=" << dq1->pid << ", Type=" << (dq1->type == FG ? "FG" : "BG") << endl;
+    print_queue_status();
 
+    // 두 번째 dequeue 호출
     Process* dq2 = dequeue();
     cout << "Dequeued Process 2: ID=" << dq2->pid << ", Type=" << (dq2->type == FG ? "FG" : "BG") << endl;
+    print_queue_status();
 
     delete p1;
     delete p2;
 }
 
+void test_promote() {
+    // 초기 상태 설정
+    for (int i = 0; i < 5; ++i) {
+        Process* p = create_process(BG);
+        enqueue(p);
+    }
+
+    // 상태 출력
+    cout << "Initial state:" << endl;
+    print_queue_status();
+
+    // promote 함수 호출
+    promote();
+
+    // 상태 출력
+    cout << "After promote:" << endl;
+    print_queue_status();
+}
+
 int main() {
    /* test_enqueue();*/
-    test_dequeue();
+   /* test_dequeue();*/
+    test_promote();
+
     return 0;
 }
 
