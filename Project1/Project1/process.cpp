@@ -59,11 +59,14 @@ void enqueue(Process* process) {
     lock_guard<mutex> lock(mtx);  // 다른 스레드와의 동시 접근을 방지하기 위해 mutex를 사용하여 락을 겁니다.
     if (process->type == FG) {
         fg_list.push_back(process);  // Foreground 프로세스는 fg_list에 삽입
+        split_and_merge(fg_list, bg_list);
     }
     else {
         bg_list.push_back(process);  // Background 프로세스는 bg_list에 삽입
+        split_and_merge(bg_list, fg_list);
     }
 }
+
 
 Process* dequeue() {
     lock_guard<mutex> lock(mtx);
