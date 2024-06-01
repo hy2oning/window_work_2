@@ -129,15 +129,21 @@ void promote() {
 }
 
 
-void split_and_merge() {
-    lock_guard<mutex> lock(mtx);
-    if (bg_list.size() > threshold) {  // Background 리스트의 크기가 임계값을 초과하면
-        vector<Process*> upper_half(bg_list.begin(), bg_list.begin() + bg_list.size() / 2);  // 앞쪽 절반을 잘라내어
-        bg_list.erase(bg_list.begin(), bg_list.begin() + bg_list.size() / 2);  // 리스트에서 제거합니다.
-        fg_list.insert(fg_list.end(), upper_half.begin(), upper_half.end());  // Foreground 리스트의 끝에 추가합니다.
+void split_and_merge(deque<Process*>& lower_list, deque<Process*>& upper_list) {
+    while (lower_list.size() > threshold) {
+        // lower_list의 앞쪽 절반을 upper_list의 끝에 붙임
+        vector<Process*> upper_half(lower_list.begin(), lower_list.begin() + lower_list.size() / 2);
+        lower_list.erase(lower_list.begin(), lower_list.begin() + lower_list.size() / 2);
+        upper_list.insert(upper_list.end(), upper_half.begin(), upper_half.end());
 
-        if (fg_list.size() > threshold) {
-            split_and_merge();  // Foreground 리스트도 임계값을 초과하면 재귀적으로 호출합니다.
+        // upper_list의 길이가 threshold를 넘을 경우 재귀적으로 split_and_merge 호출
+        if (upper_list.size() > threshold) {
+            if (&upper_list == &fg_list) {
+                split_and_merge(fg_list, bg_list);
+            }
+            else {
+                split_and_merge(upper_list, fg_list);
+            }
         }
     }
 }
@@ -277,7 +283,7 @@ int main() {
     /* test_enqueue();*/
     /* test_dequeue();*/
     /* test_promote();*/
-    /*test_split_and_merge();*/
+    /* test_split_and_merge();*/
 
     int monitor_interval = 2;  // monitor 프로세스의 실행 간격
     int shell_interval = 4;    // shell 프로세스의 실행 간격
