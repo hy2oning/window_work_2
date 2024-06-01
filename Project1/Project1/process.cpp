@@ -22,9 +22,12 @@ struct Process {
 deque<Process*> fg_list;    // Foreground 프로세스 리스트
 deque<Process*> bg_list;    // Background 프로세스 리스트
 deque<pair<Process*, int>> wait_queue;  // Wait Queue (대기 큐)
+deque<Process*> running_queue;
 mutex mtx;                 // 동기화 객체
 int current_pid = 0;       // 현재 프로세스 ID
 const int threshold = 10;  // 임계값
+condition_variable cv;
+bool stop_flag = false;
 
 Process* create_process(ProcessType type) {
     return new Process{ current_pid++, type };
@@ -224,11 +227,72 @@ void test_split_and_merge() {
     cout << endl;
 }
 
+void monitor_function(int interval) {
+    while (!stop_flag) {
+        {
+            lock_guard<mutex> lock(mtx);
+            cout << "Running: ";
+            for (auto& process : running_queue) {
+                cout << process->pid << (process->type == FG ? "F" : "B") << " ";
+            }
+            cout << endl;
+
+            cout << "---------------------------" << endl;
+            cout << "DQ: ";
+            for (auto& process : bg_list) {
+                cout << process->pid << (process->type == FG ? "F" : "B") << " ";
+            }
+            cout << endl;
+
+            cout << "---------------------------" << endl;
+            cout << "WQ: ";
+            for (auto& entry : wait_queue) {
+                cout << entry.first->pid << (entry.first->type == FG ? "F:" : "B:") << entry.second << " ";
+            }
+            cout << endl;
+        }
+        this_thread::sleep_for(chrono::seconds(interval));
+    }
+}
+
+void shell_function(int interval) {
+    while (!stop_flag) {
+        {
+            lock_guard<mutex> lock(mtx);
+            Process* process = create_process(FG);
+            enqueue(process);
+            running_queue.push_back(process);
+        }
+        this_thread::sleep_for(chrono::seconds(interval));
+        {
+            lock_guard<mutex> lock(mtx);
+            running_queue.pop_back();
+        }
+    }
+}
+
+
+
 int main() {
-   /* test_enqueue();*/
-   /* test_dequeue();*/
-   /* test_promote();*/
-      test_split_and_merge();
+    /* test_enqueue();*/
+    /* test_dequeue();*/
+    /* test_promote();*/
+    /*test_split_and_merge();*/
+
+    int monitor_interval = 2;  // monitor 프로세스의 실행 간격
+    int shell_interval = 4;    // shell 프로세스의 실행 간격
+
+    // Monitor 스레드 시작
+    thread monitor_thread(monitor_function, monitor_interval);
+
+    // Shell 스레드 시작
+    thread shell_thread(shell_function, shell_interval);
+
+    this_thread::sleep_for(chrono::seconds(30));  // 30초 동안 실행 후 종료
+    stop_flag = true;
+
+    monitor_thread.join();
+    shell_thread.join();
 
     return 0;
 }
