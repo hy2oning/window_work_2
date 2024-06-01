@@ -111,6 +111,7 @@ void promote() {
 
         // Foreground 리스트의 끝에 프로세스를 추가합니다.
         fg_list.push_back(process);
+        split_and_merge(fg_list, bg_list);
 
         // Background 리스트가 비어 있으면 promote 포인터를 초기화합니다.
         if (bg_list.empty() && promote_pointer != bg_list.end()) {
@@ -130,6 +131,7 @@ void promote() {
         promote_pointer = bg_list.begin();
     }
 }
+
 
 
 void split_and_merge(deque<Process*>& lower_list, deque<Process*>& upper_list) {
@@ -215,26 +217,26 @@ void test_promote() {
 }
 
 
-void test_split_and_merge() {
-    for (int i = 0; i < 15; ++i) {
-        Process* p = create_process(BG);
-        enqueue(p);
-    }
-
-    split_and_merge();
-
-    cout << "Foreground Queue after split_and_merge: ";
-    for (auto& process : fg_list) {
-        cout << process->pid << " ";
-    }
-    cout << endl;
-
-    cout << "Background Queue after split_and_merge: ";
-    for (auto& process : bg_list) {
-        cout << process->pid << " ";
-    }
-    cout << endl;
-}
+//void test_split_and_merge() {
+//    for (int i = 0; i < 15; ++i) {
+//        Process* p = create_process(BG);
+//        enqueue(p);
+//    }
+//
+//    split_and_merge();
+//
+//    cout << "Foreground Queue after split_and_merge: ";
+//    for (auto& process : fg_list) {
+//        cout << process->pid << " ";
+//    }
+//    cout << endl;
+//
+//    cout << "Background Queue after split_and_merge: ";
+//    for (auto& process : bg_list) {
+//        cout << process->pid << " ";
+//    }
+//    cout << endl;
+//}
 
 void monitor_function(int interval) {
     while (!stop_flag) {
