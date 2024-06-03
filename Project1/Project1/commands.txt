@@ -1,5 +1,5 @@
 echo abc
 dummy
-gcd 20 100
+gcd 13 100
 prime 20000
 sum 200000

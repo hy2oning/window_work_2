@@ -243,6 +243,34 @@ void BG_function() {
     // Implement background processing tasks here
 }
 
+int gcd(int a, int b) {
+    while (b != 0) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+int count_primes(int n) {
+    if (n < 2) return 0;
+    std::vector<bool> is_prime(n + 1, true);
+    is_prime[0] = is_prime[1] = false;
+    for (int i = 2; i * i <= n; ++i) {
+        if (is_prime[i]) {
+            for (int j = i * i; j <= n; j += i) {
+                is_prime[j] = false;
+            }
+        }
+    }
+    return std::count(is_prime.begin(), is_prime.end(), true);
+}
+
+int sum_mod(int x) {
+    long long sum = (long long)x * (x + 1) / 2;
+    return sum % 1000000;
+}
+
 void shell_function() {
     std::ifstream infile("commands.txt");
     if (!infile.is_open()) {
@@ -266,11 +294,28 @@ void shell_function() {
         if (command == "echo" && tokens.size() == 2) {
             std::cout << tokens[1] << std::endl;
         }
+        else if (command == "dummy") {
+            // Do nothing
+        }
+        else if (command == "gcd" && tokens.size() == 3) {
+            int x = std::stoi(tokens[1]);
+            int y = std::stoi(tokens[2]);
+            std::cout << gcd(x, y) << std::endl;
+        }
+        else if (command == "prime" && tokens.size() == 2) {
+            int x = std::stoi(tokens[1]);
+            std::cout << count_primes(x) << std::endl;
+        }
+        else if (command == "sum" && tokens.size() == 2) {
+            int x = std::stoi(tokens[1]);
+            std::cout << sum_mod(x) << std::endl;
+        }
         else {
             std::cerr << "Unknown command or wrong arguments: " << line << std::endl;
         }
     }
 }
+
 
 
 
