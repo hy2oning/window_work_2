@@ -239,13 +239,9 @@ const int threshold = 10;  // �Ӱ谪
 //    cout << endl;
 //}
 
-void FG_function() {
-    // Implement foreground processing tasks here
-}
-
-void BG_function() {
-    // Implement background processing tasks here
-}
+void FG_function(const std::string& line);
+void BG_function(const std::string& line);
+void run_command_with_options(const std::string& command, const std::vector<std::string>& args, int n, int duration, int period);
 
 int gcd(int a, int b) {
     while (b != 0) {
@@ -360,6 +356,90 @@ void run_command_with_options(const std::string& command, const std::vector<std:
     }
 }
 
+void FG_function(const std::string& line) {
+    std::istringstream iss(line);
+    std::vector<std::string> tokens;
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+
+    if (tokens.empty()) return;
+
+    std::string command = tokens[0];
+    std::vector<std::string> args;
+    int n = 1;  // Number of processes
+    int duration = 0;  // Duration in seconds
+    int period = 0;  // Period in seconds
+    int m = 1;  // Number of threads for sum command
+
+    for (size_t i = 1; i < tokens.size(); ++i) {
+        if (tokens[i] == "-n" && i + 1 < tokens.size()) {
+            n = std::stoi(tokens[++i]);
+        }
+        else if (tokens[i] == "-d" && i + 1 < tokens.size()) {
+            duration = std::stoi(tokens[++i]);
+        }
+        else if (tokens[i] == "-p" && i + 1 < tokens.size()) {
+            period = std::stoi(tokens[++i]);
+        }
+        else if (tokens[i] == "-m" && i + 1 < tokens.size() && command == "sum") {
+            m = std::stoi(tokens[++i]);
+        }
+        else {
+            args.push_back(tokens[i]);
+        }
+    }
+
+    if (command == "sum" && m > 1) {
+        args.push_back(std::to_string(m));
+    }
+
+    run_command_with_options(command, args, n, duration, period);
+}
+
+void BG_function(const std::string& line) {
+    std::istringstream iss(line);
+    std::vector<std::string> tokens;
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+
+    if (tokens.empty()) return;
+
+    std::string command = tokens[0];
+    std::vector<std::string> args;
+    int n = 1;  // Number of processes
+    int duration = 0;  // Duration in seconds
+    int period = 0;  // Period in seconds
+    int m = 1;  // Number of threads for sum command
+
+    for (size_t i = 1; i < tokens.size(); ++i) {
+        if (tokens[i] == "-n" && i + 1 < tokens.size()) {
+            n = std::stoi(tokens[++i]);
+        }
+        else if (tokens[i] == "-d" && i + 1 < tokens.size()) {
+            duration = std::stoi(tokens[++i]);
+        }
+        else if (tokens[i] == "-p" && i + 1 < tokens.size()) {
+            period = std::stoi(tokens[++i]);
+        }
+        else if (tokens[i] == "-m" && i + 1 < tokens.size() && command == "sum") {
+            m = std::stoi(tokens[++i]);
+        }
+        else {
+            args.push_back(tokens[i]);
+        }
+    }
+
+    if (command == "sum" && m > 1) {
+        args.push_back(std::to_string(m));
+    }
+
+    run_command_with_options(command, args, n, duration, period);
+}
+
 void shell_function() {
     std::ifstream infile("commands.txt");
     if (!infile.is_open()) {
@@ -369,45 +449,16 @@ void shell_function() {
 
     std::string line;
     while (std::getline(infile, line)) {
-        std::istringstream iss(line);
-        std::vector<std::string> tokens;
-        std::string token;
-        while (iss >> token) {
-            tokens.push_back(token);
+        if (line.empty()) continue;
+
+        if (line[0] == '&') {
+            line = line.substr(1);  // Remove '&' character
+            std::thread bg(BG_function, line);
+            bg.detach();
         }
-
-        if (tokens.empty()) continue;
-
-        std::string command = tokens[0];
-        std::vector<std::string> args;
-        int n = 1;  // Number of processes
-        int duration = 0;  // Duration in seconds
-        int period = 0;  // Period in seconds
-        int m = 1;  // Number of threads for sum command
-
-        for (size_t i = 1; i < tokens.size(); ++i) {
-            if (tokens[i] == "-n" && i + 1 < tokens.size()) {
-                n = std::stoi(tokens[++i]);
-            }
-            else if (tokens[i] == "-d" && i + 1 < tokens.size()) {
-                duration = std::stoi(tokens[++i]);
-            }
-            else if (tokens[i] == "-p" && i + 1 < tokens.size()) {
-                period = std::stoi(tokens[++i]);
-            }
-            else if (tokens[i] == "-m" && i + 1 < tokens.size() && command == "sum") {
-                m = std::stoi(tokens[++i]);
-            }
-            else {
-                args.push_back(tokens[i]);
-            }
+        else {
+            FG_function(line);
         }
-
-        if (command == "sum" && m > 1) {
-            args.push_back(std::to_string(m));
-        }
-
-        run_command_with_options(command, args, n, duration, period);
     }
 }
 
@@ -418,12 +469,8 @@ int main() {
     /* test_promote();*/
     /* test_split_and_merge();*/
 
-    std::thread FG(FG_function);
-    std::thread BG(BG_function);
     std::thread shell(shell_function);
 
-    FG.join();
-    BG.join();
     shell.join();
 
     return 0;

@@ -1,5 +1,5 @@
 echo abc -p 5 -d 50 -n 3
 sum 1000000 -m 4 -n 2
-gcd 12 18 -n 4
-prime 20000 -n 4
+gcd 12 18 
+prime 20000 
 dummy -n 100
